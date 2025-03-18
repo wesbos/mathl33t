@@ -13,10 +13,12 @@ interface GameState {
   streak: number;
   highScore: number;
   currentProblem: MathProblem | null;
+  solvedProblems: string[];
   setLoggedIn: (status: boolean) => void;
   setUsername: (username: string) => void;
   setScore: (score: number) => void;
   setProblem: (problem: MathProblem | null) => void;
+  addSolvedProblem: (id: string) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -26,11 +28,15 @@ export const useGameStore = create<GameState>((set) => ({
   streak: 0,
   highScore: 0,
   currentProblem: null,
+  solvedProblems: [],
   setLoggedIn: (status) => set({ isLoggedIn: status }),
   setUsername: (username) => set({ username }),
   setScore: (score) => set((state) => ({
     score,
     highScore: Math.max(state.highScore, score)
   })),
-  setProblem: (problem) => set({ currentProblem: problem })
+  setProblem: (problem) => set({ currentProblem: problem }),
+  addSolvedProblem: (id) => set((state) => ({
+    solvedProblems: [...state.solvedProblems, id]
+  }))
 }));
