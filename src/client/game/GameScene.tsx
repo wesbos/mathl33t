@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import Player from './Player';
 import Ground from './Ground';
 import MathProblem from './MathProblem';
@@ -7,6 +7,7 @@ import { useGameStore } from '../store/gameStore';
 import { RigidBody, CuboidCollider, useRapier } from '@react-three/rapier';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { Text } from '@react-three/drei';
 
 function JumpBlock({ position, color = "#FF9800", size = [3, 2, 3] }: {
   position: [number, number, number],
@@ -242,122 +243,140 @@ function Car({ position }: { position: [number, number, number] }) {
   );
 }
 
+function MathBlock({ position, id, question }: {
+  position: [number, number, number],
+  id: string,
+  question: string
+}) {
+  const setProblem = useGameStore(state => state.setProblem);
+  const addSolvedProblem = useGameStore(state => state.addSolvedProblem);
+  const solvedProblems = useGameStore(state => state.solvedProblems);
+
+  // Don't render if this problem is already solved
+  if (solvedProblems.includes(id)) {
+    console.log(`MathBlock ${id} - Already solved, not rendering`);
+    return null;
+  }
+
+  console.log(`MathBlock ${id} - Rendering`);
+
+  const calculateAnswer = (question: string): number => {
+    // Remove the "= ?" part and any spaces
+    const expression = question.replace('= ?', '').trim();
+    const [num1, operator, num2] = expression.split(' ');
+    const a = parseInt(num1);
+    const b = parseInt(num2);
+
+    switch (operator) {
+      case '+': return a + b;
+      case '-': return a - b;
+      case '×': return a * b;
+      case '÷': return a / b;
+      default: return 0;
+    }
+  };
+
+  const generateOptions = (answer: number): number[] => {
+    const options = [answer];
+    // Generate 3 wrong answers that are close to the correct answer
+    while (options.length < 4) {
+      const offset = Math.floor(Math.random() * 5) + 1;
+      const wrongAnswer = Math.random() < 0.5 ? answer + offset : answer - offset;
+      if (!options.includes(wrongAnswer) && wrongAnswer > 0) {
+        options.push(wrongAnswer);
+      }
+    }
+    // Shuffle the options
+    return options.sort(() => Math.random() - 0.5);
+  };
+
+  const handleCollision = () => {
+    console.log(`MathBlock ${id} - Collision detected`);
+    const answer = calculateAnswer(question);
+    setProblem({
+      question,
+      answer,
+      options: generateOptions(answer),
+      onAnswer: (selectedAnswer) => {
+        if (selectedAnswer === answer) {
+          console.log(`MathBlock ${id} - Correct answer selected, marking as solved`);
+          // Mark problem as solved in the store
+          addSolvedProblem(id);
+          setProblem(null);
+
+          // Play success sound
+          new Audio('/sounds/success.mp3').play().catch(() => {});
+        }
+      }
+    });
+    new Audio('/sounds/activate.mp3').play().catch(() => {});
+  };
+
+  return (
+    <RigidBody type="fixed" position={position} sensor onIntersectionEnter={handleCollision}>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[4, 2, 4]} />
+        <meshStandardMaterial
+          color="#2196F3"
+          metalness={0.5}
+          roughness={0.5}
+        />
+      </mesh>
+
+      {/* Question text on all sides */}
+      {[
+        [0, 0, 2.01], // front
+        [0, 0, -2.01], // back
+        [2.01, 0, 0], // right
+        [-2.01, 0, 0], // left
+      ].map((pos, i) => (
+        <Text
+          key={i}
+          position={pos as [number, number, number]}
+          rotation={[0, i < 2 ? 0 : Math.PI / 2, 0]}
+          fontSize={0.5}
+          color="white"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.05}
+          outlineColor="#000000"
+        >
+          {question}
+        </Text>
+      ))}
+      <CuboidCollider args={[2, 1, 2]} sensor />
+    </RigidBody>
+  );
+}
+
 export default function GameScene() {
   const solvedProblems = useGameStore(state => state.solvedProblems);
 
   // Generate world elements
   const worldElements = useMemo(() => {
     const elements = {
-      platforms: [] as { position: [number, number, number], size?: [number, number, number], color?: string, amplitude?: number, speed?: number }[],
-      jumpBlocks: [] as { position: [number, number, number], color?: string, size?: [number, number, number] }[],
-      problems: [] as { position: [number, number, number], id: string }[]
+      problems: [
+        // Arrange 6 blocks in a hexagon pattern
+        { position: [0, 1, -8], id: 'problem-1', question: '5 + 3 = ?' },
+        { position: [7, 1, -4], id: 'problem-2', question: '12 - 5 = ?' },
+        { position: [7, 1, 4], id: 'problem-3', question: '4 × 3 = ?' },
+        { position: [0, 1, 8], id: 'problem-4', question: '15 ÷ 3 = ?' },
+        { position: [-7, 1, 4], id: 'problem-5', question: '7 + 6 = ?' },
+        { position: [-7, 1, -4], id: 'problem-6', question: '20 - 8 = ?' }
+      ]
     };
-
-    // Create main floating islands
-    const islandPositions = [
-      [-20, 2, -20], [0, 3, -20], [20, 2, -20],
-      [-20, 3, 0], [20, 3, 0],
-      [-20, 2, 20], [0, 3, 20], [20, 2, 20]
-    ] as [number, number, number][];
-
-    islandPositions.forEach(pos => {
-      elements.platforms.push({
-        position: pos,
-        size: [8, 1, 8],
-        color: "#2ECC71",
-        amplitude: 0.3,
-        speed: 0.5
-      });
-    });
-
-    // Add challenging jump block sequences
-    const jumpSequences = [
-      // Spiral staircase
-      ...Array.from({ length: 8 }, (_, i) => ({
-        position: [
-          Math.cos(i * Math.PI / 4) * 12,
-          3 + i * 1.5,
-          Math.sin(i * Math.PI / 4) * 12
-        ] as [number, number, number],
-        color: "#FF9800",
-        size: [2.5, 1, 2.5]
-      })),
-      // Zigzag path
-      ...Array.from({ length: 6 }, (_, i) => ({
-        position: [
-          -15 + i * 6,
-          5 + (i % 2) * 2,
-          -10
-        ] as [number, number, number],
-        color: "#9B59B6",
-        size: [2, 1, 2]
-      }))
-    ];
-
-    elements.jumpBlocks.push(...jumpSequences);
-
-    // Add floating platforms at various heights
-    const floatingPlatforms = [
-      { pos: [0, 8, 0], size: [10, 0.5, 10], color: "#3498DB" },
-      { pos: [-15, 6, -15], size: [4, 0.5, 4], color: "#E74C3C" },
-      { pos: [15, 7, 15], size: [4, 0.5, 4], color: "#F1C40F" },
-      { pos: [-15, 7, 15], size: [4, 0.5, 4], color: "#1ABC9C" },
-      { pos: [15, 6, -15], size: [4, 0.5, 4], color: "#E67E22" }
-    ];
-
-    floatingPlatforms.forEach(({ pos, size, color }) => {
-      elements.platforms.push({
-        position: pos as [number, number, number],
-        size: size,
-        color: color,
-        amplitude: 0.4,
-        speed: 0.8
-      });
-    });
-
-    // Add small challenge platforms
-    const challengePlatforms = [
-      [-8, 10, -8], [8, 11, -8],
-      [-8, 11, 8], [8, 10, 8],
-      [0, 12, 0]
-    ] as [number, number, number][];
-
-    challengePlatforms.forEach(pos => {
-      elements.platforms.push({
-        position: pos,
-        size: [3, 0.3, 3],
-        color: "#E74C3C",
-        amplitude: 0.5,
-        speed: 1.2
-      });
-    });
-
-    // Place math problems strategically
-    const problemLocations = [
-      // On main islands
-      ...islandPositions.map(pos => ([pos[0], pos[1] + 2, pos[2]])),
-      // On high platforms
-      ...challengePlatforms.map(pos => ([pos[0], pos[1] + 2, pos[2]])),
-      // On spiral staircase
-      ...jumpSequences.slice(0, 4).map(block => ([
-        block.position[0],
-        block.position[1] + 2,
-        block.position[2]
-      ]))
-    ] as [number, number, number][];
-
-    // Select random locations for problems
-    const selectedLocations = problemLocations
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 12);
-
-    elements.problems = selectedLocations.map((position, i) => ({
-      position,
-      id: `problem-${i}`
-    }));
-
     return elements;
   }, []);
+
+  // Filter out solved problems
+  const activeProblems = worldElements.problems.filter(problem => {
+    const isSolved = solvedProblems.includes(problem.id);
+    console.log(`Problem ${problem.id} - Solved: ${isSolved}, Question: ${problem.question}`);
+    return !isSolved;
+  });
+
+  console.log('Active Problems:', activeProblems.length);
+  console.log('Solved Problems:', solvedProblems);
 
   return (
     <>
@@ -373,43 +392,23 @@ export default function GameScene() {
       <Player />
       <Ground />
 
-      {/* Add new dangerous and fun elements */}
+      {/* Add fun elements */}
       <LavaPit position={[0, -1, -15]} />
       <EvilGoose startPosition={[10, 1, 10]} />
       <Car position={[-10, 1, -10]} />
 
-      {/* Render jump blocks */}
-      {worldElements.jumpBlocks.map((block, index) => (
-        <JumpBlock
-          key={`block-${index}`}
-          position={block.position}
-          color={block.color}
-          size={block.size}
-        />
-      ))}
-
-      {/* Render platforms */}
-      {worldElements.platforms.map((platform, index) => (
-        <FloatingPlatform
-          key={`platform-${index}`}
-          position={platform.position}
-          size={platform.size}
-          color={platform.color}
-          amplitude={platform.amplitude}
-          speed={platform.speed}
-        />
-      ))}
-
-      {/* Render unsolved math problems */}
-      {worldElements.problems.map((problem) => (
-        !solvedProblems.includes(problem.id) && (
-          <MathProblem
+      {/* Render only unsolved math blocks */}
+      {activeProblems.map((problem) => {
+        console.log(`Rendering block ${problem.id}`);
+        return (
+          <MathBlock
             key={problem.id}
             position={problem.position}
             id={problem.id}
+            question={problem.question}
           />
-        )
-      ))}
+        );
+      })}
     </>
   );
 }

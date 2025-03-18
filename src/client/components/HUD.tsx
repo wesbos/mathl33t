@@ -9,6 +9,13 @@ export default function HUD() {
 
   const handleAnswer = (option: number) => {
     setSelectedAnswer(option);
+    console.log('Selected answer:', option);
+
+    // Call the onAnswer callback immediately
+    if (currentProblem?.onAnswer) {
+      console.log('Calling onAnswer with:', option);
+      currentProblem.onAnswer(option);
+    }
 
     if (option === currentProblem?.answer) {
       // Play success sound

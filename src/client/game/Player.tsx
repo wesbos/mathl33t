@@ -31,7 +31,7 @@ export default function Player() {
   const CAMERA_HEIGHT = 3;
   const CAMERA_DISTANCE = 8;
   const CAMERA_LAG = 0.1;
-  const GRAVITY_MULTIPLIER = 1000;
+  const GRAVITY_MULTIPLIER = 2000;
 
   // Persistent vectors to avoid creating new ones every frame
   const moveDirection = new Vector3();
@@ -54,12 +54,12 @@ export default function Player() {
     if (velocity.y < 0) {
       playerRef.current.applyImpulse({ x: 0, y: -9.81 * GRAVITY_MULTIPLIER * delta, z: 0 });
     } else if (velocity.y > 0) {
-      // Almost no gravity while going up to reach higher
-      playerRef.current.applyImpulse({ x: 0, y: -9.81 * (GRAVITY_MULTIPLIER * 0.05) * delta, z: 0 }); // Even less upward gravity
+      // Almost no gravity while going up for a quick burst
+      playerRef.current.applyImpulse({ x: 0, y: -9.81 * (GRAVITY_MULTIPLIER * 0.02) * delta, z: 0 }); // Even less upward gravity
     }
 
     // Check if player is grounded (adjusted threshold for snappier response)
-    const isNowGrounded = Math.abs(velocity.y) < 0.02; // Even lower threshold for more responsive jumping
+    const isNowGrounded = Math.abs(velocity.y) < 0.01; // Even lower threshold for more responsive jumping
     if (isNowGrounded && !isGrounded) {
       setIsGrounded(true);
       setCanDoubleJump(true);
