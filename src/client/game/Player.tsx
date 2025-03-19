@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { Vector3, Quaternion, Euler } from 'three';
 import { useKeyboardControls } from '@react-three/drei';
+import { useGameStore } from '../store/gameStore';
 
 type Controls = {
   forward: boolean;
@@ -18,6 +19,7 @@ export default function Player() {
   const [, getKeys] = useKeyboardControls<Controls>();
   const [canDoubleJump, setCanDoubleJump] = useState(true);
   const [isGrounded, setIsGrounded] = useState(false);
+  const appearance = useGameStore(state => state.appearance);
 
   // Animation refs
   const leftLegRef = useRef<any>();
@@ -43,12 +45,21 @@ export default function Player() {
   const playerRotation = new Quaternion();
   const targetRotation = new Quaternion();
 
+  const updatePlayerPosition = useGameStore(state => state.updatePlayerPosition);
+
   useFrame((state, delta) => {
     if (!playerRef.current) return;
 
     const { forward, backward, left, right, jump } = getKeys();
     const position = playerRef.current.translation();
     const velocity = playerRef.current.linvel();
+    const rotation = playerRef.current.rotation();
+
+    // Send position update to server every frame
+    updatePlayerPosition(
+      { x: position.x, y: position.y, z: position.z },
+      { x: rotation.x, y: rotation.y, z: rotation.z }
+    );
 
     // Apply extra gravity when falling
     if (velocity.y < 0) {
@@ -172,26 +183,99 @@ export default function Player() {
         {/* Body */}
         <mesh castShadow position={[0, 0.8, 0]}>
           <boxGeometry args={[0.8, 1.2, 0.4]} />
-          <meshStandardMaterial color="#5B84B1" metalness={0.1} roughness={0.8} />
+          <meshStandardMaterial color={appearance.shirtColor} metalness={0.1} roughness={0.8} />
         </mesh>
 
         {/* Head */}
         <mesh castShadow position={[0, 1.6, 0]}>
           <boxGeometry args={[0.8, 0.8, 0.8]} />
-          <meshStandardMaterial color="#FC766A" metalness={0.1} roughness={0.8} />
+          <meshStandardMaterial color={appearance.skinColor} metalness={0.1} roughness={0.8} />
+        </mesh>
+
+        {/* Hair */}
+        {appearance.hairStyle !== 'bald' && (
+          <group position={[0, 2, 0]}>
+            {/* Base hair */}
+            <mesh castShadow position={[0, -0.2, 0]}>
+              <boxGeometry args={[0.85, 0.2, 0.85]} />
+              <meshStandardMaterial color={appearance.hairColor} metalness={0.1} roughness={0.8} />
+            </mesh>
+
+            {/* Hair style specific geometry */}
+            {appearance.hairStyle === 'short' && (
+              <mesh castShadow position={[0, -0.1, 0]}>
+                <boxGeometry args={[0.82, 0.1, 0.82]} />
+                <meshStandardMaterial color={appearance.hairColor} metalness={0.1} roughness={0.8} />
+              </mesh>
+            )}
+
+            {appearance.hairStyle === 'medium' && (
+              <mesh castShadow position={[0, -0.3, 0.2]}>
+                <boxGeometry args={[0.8, 0.4, 0.4]} />
+                <meshStandardMaterial color={appearance.hairColor} metalness={0.1} roughness={0.8} />
+              </mesh>
+            )}
+
+            {appearance.hairStyle === 'long' && (
+              <mesh castShadow position={[0, -0.6, 0.2]}>
+                <boxGeometry args={[0.7, 0.8, 0.3]} />
+                <meshStandardMaterial color={appearance.hairColor} metalness={0.1} roughness={0.8} />
+              </mesh>
+            )}
+
+            {appearance.hairStyle === 'curly' && (
+              <>
+                {[[-0.3, 0.1, -0.3], [0.3, 0.1, -0.3], [-0.3, 0.1, 0.3], [0.3, 0.1, 0.3]].map((pos, i) => (
+                  <mesh key={i} castShadow position={pos}>
+                    <sphereGeometry args={[0.2]} />
+                    <meshStandardMaterial color={appearance.hairColor} metalness={0.1} roughness={0.8} />
+                  </mesh>
+                ))}
+              </>
+            )}
+
+            {appearance.hairStyle === 'spiky' && (
+              <>
+                {[[-0.2, 0.2, -0.2], [0.2, 0.2, -0.2], [0, 0.2, 0], [-0.2, 0.2, 0.2], [0.2, 0.2, 0.2]].map((pos, i) => (
+                  <mesh key={i} castShadow position={pos}>
+                    <coneGeometry args={[0.1, 0.3, 4]} />
+                    <meshStandardMaterial color={appearance.hairColor} metalness={0.1} roughness={0.8} />
+                  </mesh>
+                ))}
+              </>
+            )}
+          </group>
+        )}
+
+        {/* Eyes */}
+        <group position={[0, 1.6, 0.4]}>
+          <mesh castShadow position={[-0.2, 0, 0]}>
+            <sphereGeometry args={[0.1]} />
+            <meshStandardMaterial color={appearance.eyeColor} metalness={0.5} roughness={0.5} />
+          </mesh>
+          <mesh castShadow position={[0.2, 0, 0]}>
+            <sphereGeometry args={[0.1]} />
+            <meshStandardMaterial color={appearance.eyeColor} metalness={0.5} roughness={0.5} />
+          </mesh>
+        </group>
+
+        {/* Lips */}
+        <mesh castShadow position={[0, 1.45, 0.4]}>
+          <boxGeometry args={[0.3, 0.1, 0.1]} />
+          <meshStandardMaterial color={appearance.lipColor} metalness={0.2} roughness={0.8} />
         </mesh>
 
         {/* Arms */}
         <group ref={leftArmRef} position={[0.6, 1.2, 0]}>
           <mesh castShadow>
             <boxGeometry args={[0.4, 1.2, 0.4]} />
-            <meshStandardMaterial color="#5B84B1" metalness={0.1} roughness={0.8} />
+            <meshStandardMaterial color={appearance.shirtColor} metalness={0.1} roughness={0.8} />
           </mesh>
         </group>
         <group ref={rightArmRef} position={[-0.6, 1.2, 0]}>
           <mesh castShadow>
             <boxGeometry args={[0.4, 1.2, 0.4]} />
-            <meshStandardMaterial color="#5B84B1" metalness={0.1} roughness={0.8} />
+            <meshStandardMaterial color={appearance.shirtColor} metalness={0.1} roughness={0.8} />
           </mesh>
         </group>
 

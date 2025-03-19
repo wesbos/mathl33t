@@ -4,6 +4,7 @@ import { Physics } from '@react-three/rapier';
 import { KeyboardControls } from '@react-three/drei';
 import GameScene from './game/GameScene';
 import HUD from './components/HUD';
+import CharacterCustomizer from './components/CharacterCustomizer';
 import { useGameStore } from './store/gameStore';
 
 type Controls = {
@@ -34,25 +35,28 @@ export default function App() {
   }
 
   return (
-    <KeyboardControls<Controls>
-      map={[
-        { name: 'forward', keys: ['ArrowUp', 'w', 'W'] },
-        { name: 'backward', keys: ['ArrowDown', 's', 'S'] },
-        { name: 'left', keys: ['ArrowLeft', 'a', 'A'] },
-        { name: 'right', keys: ['ArrowRight', 'd', 'D'] },
-        { name: 'jump', keys: ['Space'] },
-      ]}
-    >
-      <Canvas
-        shadows
-        camera={{ position: [0, 5, 10], fov: 75 }}
-        className="w-screen h-screen"
+    <>
+      <KeyboardControls<Controls>
+        map={[
+          { name: 'forward', keys: ['ArrowUp', 'w', 'W'] },
+          { name: 'backward', keys: ['ArrowDown', 's', 'S'] },
+          { name: 'left', keys: ['ArrowLeft', 'a', 'A'] },
+          { name: 'right', keys: ['ArrowRight', 'd', 'D'] },
+          { name: 'jump', keys: ['Space'] },
+        ]}
       >
-        <Physics>
-          <GameScene />
-        </Physics>
-      </Canvas>
-      <HUD />
-    </KeyboardControls>
+        <Canvas
+          shadows
+          camera={{ position: [0, 5, 10], fov: 75 }}
+          className="w-screen h-screen"
+        >
+          <Physics>
+            <GameScene />
+          </Physics>
+        </Canvas>
+        <HUD />
+        <CharacterCustomizer />
+      </KeyboardControls>
+    </>
   );
 }

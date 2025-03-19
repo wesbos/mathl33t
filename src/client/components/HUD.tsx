@@ -11,36 +11,48 @@ export default function HUD() {
     setSelectedAnswer(option);
     console.log('Selected answer:', option);
 
-    // Call the onAnswer callback immediately
-    if (currentProblem?.onAnswer) {
-      console.log('Calling onAnswer with:', option);
-      currentProblem.onAnswer(option);
-    }
-
     if (option === currentProblem?.answer) {
       // Play success sound
       new Audio('/sounds/correct.mp3').play().catch(() => {});
-      // Update score after delay
+
+      // First update the score
       setTimeout(() => {
         useGameStore.setState(state => ({
           score: state.score + 10,
-          streak: state.streak + 1,
+          streak: state.streak + 1
+        }));
+      }, 1000);
+
+      // Then remove the problem and block after showing the success message
+      setTimeout(() => {
+        if (currentProblem?.onAnswer) {
+          console.log('Calling onAnswer with:', option);
+          currentProblem.onAnswer(option);
+        }
+        useGameStore.setState(state => ({
           currentProblem: null
         }));
         setSelectedAnswer(null);
-      }, 1000);
+      }, 1200);
     } else {
       // Play failure sound
       new Audio('/sounds/wrong.mp3').play().catch(() => {});
-      // Update score after delay
+
+      // First update the score
       setTimeout(() => {
         useGameStore.setState(state => ({
           score: Math.max(0, state.score - 5),
-          streak: 0,
+          streak: 0
+        }));
+      }, 1000);
+
+      // Then remove the problem after showing the failure message
+      setTimeout(() => {
+        useGameStore.setState(state => ({
           currentProblem: null
         }));
         setSelectedAnswer(null);
-      }, 1000);
+      }, 1200);
     }
   };
 

@@ -8,6 +8,7 @@ import { RigidBody, CuboidCollider, useRapier } from '@react-three/rapier';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Text } from '@react-three/drei';
+import OtherPlayer from './OtherPlayer';
 
 function JumpBlock({ position, color = "#FF9800", size = [3, 2, 3] }: {
   position: [number, number, number],
@@ -54,6 +55,7 @@ function FloatingPlatform({ position, size = [6, 0.5, 6], color = "#E74C3C", amp
 
 function LavaPit({ position }: { position: [number, number, number] }) {
   const flamesRef = useRef<THREE.Group>();
+  const setScore = useGameStore(state => state.setScore);
 
   useFrame((state) => {
     if (!flamesRef.current) return;
@@ -104,8 +106,19 @@ function LavaPit({ position }: { position: [number, number, number] }) {
       <CuboidCollider
         args={[5, 1, 5]}
         sensor
-        onIntersectionEnter={() => {
+        onIntersectionEnter={(e) => {
+          // Play death sound
           new Audio('/sounds/burn.mp3').play().catch(() => {});
+
+          // Reset player position and momentum
+          if (e.rigidBody) {
+            e.rigidBody.setTranslation({ x: 0, y: 3, z: 0 });
+            e.rigidBody.setLinvel({ x: 0, y: 0, z: 0 });
+            e.rigidBody.setAngvel({ x: 0, y: 0, z: 0 });
+          }
+
+          // Reset score and streak
+          setScore(0);
         }}
       />
     </group>
@@ -312,8 +325,19 @@ function MathBlock({ position, id, question }: {
     new Audio('/sounds/activate.mp3').play().catch(() => {});
   };
 
+  const handleExit = () => {
+    console.log(`MathBlock ${id} - Player walked away, clearing problem`);
+    setProblem(null);
+  };
+
   return (
-    <RigidBody type="fixed" position={position} sensor onIntersectionEnter={handleCollision}>
+    <RigidBody
+      type="fixed"
+      position={position}
+      sensor
+      onIntersectionEnter={handleCollision}
+      onIntersectionExit={handleExit}
+    >
       <mesh castShadow receiveShadow>
         <boxGeometry args={[4, 2, 4]} />
         <meshStandardMaterial
@@ -349,66 +373,266 @@ function MathBlock({ position, id, question }: {
   );
 }
 
+function StoreBuilding({ position = [15, 0, 0] }: { position?: [number, number, number] }) {
+  const [isPlayerInside, setIsPlayerInside] = useState(false);
+  const score = useGameStore(state => state.score);
+  const storeItems = useGameStore(state => state.storeItems);
+  const inventory = useGameStore(state => state.inventory);
+  const purchaseItem = useGameStore(state => state.purchaseItem);
+
+  const handleEnterStore = () => {
+    console.log('Player entered store');
+    setIsPlayerInside(true);
+    new Audio('/sounds/store-enter.mp3').play().catch(() => {});
+  };
+
+  const handleExitStore = () => {
+    console.log('Player exited store');
+    setIsPlayerInside(false);
+  };
+
+  return (
+    <group position={position}>
+      {/* Store Building */}
+      <group>
+        {/* Floor */}
+        <RigidBody type="fixed" colliders="hull">
+          <mesh receiveShadow position={[0, 0.1, 0]}>
+            <boxGeometry args={[8, 0.2, 8]} />
+            <meshStandardMaterial color="#8B4513" />
+          </mesh>
+        </RigidBody>
+
+        {/* Back Wall */}
+        <RigidBody type="fixed" colliders="hull">
+          <mesh castShadow receiveShadow position={[0, 2.5, -4]}>
+            <boxGeometry args={[8, 5, 0.2]} />
+            <meshStandardMaterial color="#E8D5B7" />
+          </mesh>
+        </RigidBody>
+
+        {/* Left Wall */}
+        <RigidBody type="fixed" colliders="hull">
+          <mesh castShadow receiveShadow position={[-4, 2.5, 0]}>
+            <boxGeometry args={[0.2, 5, 8]} />
+            <meshStandardMaterial color="#E8D5B7" />
+          </mesh>
+        </RigidBody>
+
+        {/* Right Wall */}
+        <RigidBody type="fixed" colliders="hull">
+          <mesh castShadow receiveShadow position={[4, 2.5, 0]}>
+            <boxGeometry args={[0.2, 5, 8]} />
+            <meshStandardMaterial color="#E8D5B7" />
+          </mesh>
+        </RigidBody>
+
+        {/* Front Wall Left */}
+        <RigidBody type="fixed" colliders="hull">
+          <mesh castShadow receiveShadow position={[-2.5, 2.5, 4]}>
+            <boxGeometry args={[3, 5, 0.2]} />
+            <meshStandardMaterial color="#E8D5B7" />
+          </mesh>
+        </RigidBody>
+
+        {/* Front Wall Right */}
+        <RigidBody type="fixed" colliders="hull">
+          <mesh castShadow receiveShadow position={[2.5, 2.5, 4]}>
+            <boxGeometry args={[3, 5, 0.2]} />
+            <meshStandardMaterial color="#E8D5B7" />
+          </mesh>
+        </RigidBody>
+
+        {/* Door Frame Top */}
+        <RigidBody type="fixed" colliders="hull">
+          <mesh castShadow receiveShadow position={[0, 4.5, 4]}>
+            <boxGeometry args={[2.2, 1, 0.2]} />
+            <meshStandardMaterial color="#8B4513" />
+          </mesh>
+        </RigidBody>
+
+        {/* Roof */}
+        <RigidBody type="fixed" colliders="hull">
+          <mesh castShadow position={[0, 5.5, 0]}>
+            <coneGeometry args={[6, 2, 4]} />
+            <meshStandardMaterial color="#8B4513" />
+          </mesh>
+        </RigidBody>
+
+        {/* Store Sign */}
+        <Text
+          position={[0, 4.5, 4.1]}
+          scale={[2, 2, 2]}
+          color="#FFD700"
+          fontSize={0.5}
+          maxWidth={2}
+          lineHeight={1}
+          letterSpacing={0.1}
+          textAlign="center"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.1}
+          outlineColor="#000000"
+        >
+          STORE
+        </Text>
+
+        {/* "ENTER" text above door */}
+        <Text
+          position={[0, 3.2, 4.1]}
+          scale={[1, 1, 1]}
+          color="#FFD700"
+          fontSize={0.3}
+          maxWidth={2}
+          lineHeight={1}
+          letterSpacing={0.1}
+          textAlign="center"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.05}
+          outlineColor="#000000"
+        >
+          ENTER
+        </Text>
+
+        {/* Available Items Display */}
+        {storeItems.map((item, index) => {
+          const yPos = 3 - index * 0.6;
+          const canAfford = score >= item.price;
+          const owned = inventory.includes(item.id);
+
+          return (
+            <group key={item.id} position={[0, yPos, -3.8]}>
+              <Text
+                position={[-2, 0, 0]}
+                fontSize={0.3}
+                color={owned ? "#4CAF50" : canAfford ? "#FFFFFF" : "#999999"}
+                anchorX="left"
+              >
+                {`${item.icon} ${item.name}`}
+              </Text>
+              <Text
+                position={[2, 0, 0]}
+                fontSize={0.3}
+                color={canAfford ? "#FFD700" : "#FF0000"}
+                anchorX="right"
+              >
+                {`${item.price} pts`}
+              </Text>
+            </group>
+          );
+        })}
+      </group>
+
+      {/* Store entrance trigger zone */}
+      <CuboidCollider
+        args={[5, 2, 5]}  // Much larger trigger zone
+        sensor
+        position={[0, 2, 0]}  // Positioned in the center of the store
+        onIntersectionEnter={handleEnterStore}
+        onIntersectionExit={handleExitStore}
+      />
+
+      {/* Purchase zones */}
+      {isPlayerInside && storeItems.map((item, index) => {
+        // Create a grid layout: 2 items per row
+        const row = Math.floor(index / 2);
+        const col = index % 2;
+        const xPos = -2 + col * 4; // Spread items horizontally
+        const zPos = -2 + row * 4; // Spread items vertically
+
+        return (
+          <group key={item.id}>
+            {/* Purchase zone collider */}
+            <CuboidCollider
+              args={[1.5, 1.5, 1.5]} // Larger purchase zones
+              sensor
+              position={[xPos, 1.5, zPos]}
+              onIntersectionEnter={() => {
+                if (!inventory.includes(item.id)) {
+                  if (score >= item.price) {
+                    purchaseItem(item.id);
+                    new Audio('/sounds/purchase.mp3').play().catch(() => {});
+                  } else {
+                    new Audio('/sounds/error.mp3').play().catch(() => {});
+                  }
+                }
+              }}
+            />
+
+            {/* Visual indicator for purchase zone */}
+            <mesh position={[xPos, 0.1, zPos]} receiveShadow>
+              <cylinderGeometry args={[1, 1, 0.1, 32]} />
+              <meshStandardMaterial
+                color={inventory.includes(item.id) ? "#4CAF50" : score >= item.price ? "#2196F3" : "#FF5252"}
+                transparent
+                opacity={0.5}
+              />
+            </mesh>
+
+            {/* Item label */}
+            <Text
+              position={[xPos, 0.2, zPos]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              fontSize={0.3}
+              color="#FFFFFF"
+              anchorX="center"
+              anchorY="middle"
+              outlineWidth={0.05}
+              outlineColor="#000000"
+            >
+              {`${item.icon} ${item.name}`}
+            </Text>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 export default function GameScene() {
-  const solvedProblems = useGameStore(state => state.solvedProblems);
-
-  // Generate world elements
-  const worldElements = useMemo(() => {
-    const elements = {
-      problems: [
-        // Arrange 6 blocks in a hexagon pattern
-        { position: [0, 1, -8], id: 'problem-1', question: '5 + 3 = ?' },
-        { position: [7, 1, -4], id: 'problem-2', question: '12 - 5 = ?' },
-        { position: [7, 1, 4], id: 'problem-3', question: '4 × 3 = ?' },
-        { position: [0, 1, 8], id: 'problem-4', question: '15 ÷ 3 = ?' },
-        { position: [-7, 1, 4], id: 'problem-5', question: '7 + 6 = ?' },
-        { position: [-7, 1, -4], id: 'problem-6', question: '20 - 8 = ?' }
-      ]
-    };
-    return elements;
-  }, []);
-
-  // Filter out solved problems
-  const activeProblems = worldElements.problems.filter(problem => {
-    const isSolved = solvedProblems.includes(problem.id);
-    console.log(`Problem ${problem.id} - Solved: ${isSolved}, Question: ${problem.question}`);
-    return !isSolved;
-  });
-
-  console.log('Active Problems:', activeProblems.length);
-  console.log('Solved Problems:', solvedProblems);
+  const players = useGameStore(state => state.players);
 
   return (
     <>
       <SkyScene />
-      <ambientLight intensity={0.4} />
-      <directionalLight
-        castShadow
-        position={[50, 50, 50]}
-        intensity={1.5}
-        shadow-mapSize={[4096, 4096]}
-      />
+      <ambientLight intensity={1.5} />
+      <directionalLight position={[10, 20, 10]} intensity={2} castShadow />
 
-      <Player />
+      {/* Ground */}
       <Ground />
 
-      {/* Add fun elements */}
-      <LavaPit position={[0, -1, -15]} />
-      <EvilGoose startPosition={[10, 1, 10]} />
-      <Car position={[-10, 1, -10]} />
+      {/* Player */}
+      <Player />
 
-      {/* Render only unsolved math blocks */}
-      {activeProblems.map((problem) => {
-        console.log(`Rendering block ${problem.id}`);
-        return (
-          <MathBlock
-            key={problem.id}
-            position={problem.position}
-            id={problem.id}
-            question={problem.question}
-          />
-        );
-      })}
+      {/* Lava Pit */}
+      <LavaPit position={[0, -2, -15]} />
+
+      {/* Math Problems */}
+      <MathProblem position={[5, 1, 5]} id="math1" question="5 + 7 = ?" />
+      <MathProblem position={[-5, 1, -5]} id="math2" question="12 - 4 = ?" />
+      <MathProblem position={[8, 1, -8]} id="math3" question="3 × 6 = ?" />
+      <MathProblem position={[-8, 1, 8]} id="math4" question="15 ÷ 3 = ?" />
+      <MathProblem position={[0, 1, 10]} id="math5" question="8 + 9 = ?" />
+
+      {/* Store */}
+      <StoreBuilding position={[15, 0, 0]} />
+
+      {/* Fun Elements */}
+      <JumpBlock position={[5, 1, 0]} />
+      <FloatingPlatform position={[-5, 2, 0]} />
+      <EvilGoose startPosition={[0, 1, -5]} />
+      <Car position={[10, 1, 10]} />
+
+      {/* Other Players */}
+      {Array.from(players.values()).map((player) => (
+        <OtherPlayer
+          key={player.id}
+          position={[player.position.x, player.position.y, player.position.z]}
+          rotation={[player.rotation.x, player.rotation.y, player.rotation.z]}
+          username={player.username}
+        />
+      ))}
     </>
   );
 }
