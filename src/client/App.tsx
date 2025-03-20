@@ -5,6 +5,7 @@ import { KeyboardControls } from '@react-three/drei';
 import GameScene from './game/GameScene';
 import HUD from './components/HUD';
 import CharacterCustomizer from './components/CharacterCustomizer';
+import Store from './components/Store';
 import { useGameStore } from './store/gameStore';
 
 type Controls = {
@@ -56,6 +57,7 @@ export default function App() {
         </Canvas>
         <HUD />
         <CharacterCustomizer />
+        <Store />
       </KeyboardControls>
     </>
   );
