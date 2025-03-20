@@ -2,7 +2,7 @@
 
 # Mathl33t
 
-A 3D world math game that isn't very good. Obnoxiously vibe coded with AI.
+A 3D world math game that isn't very good. Obnoxiously vibe coded with AI. You can see the prompts in prompts.html
 
 You can play it at [https://mathl33t.com](mathl33t.com)
 
