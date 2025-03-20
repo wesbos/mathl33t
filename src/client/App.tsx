@@ -6,6 +6,7 @@ import GameScene from './game/GameScene';
 import HUD from './components/HUD';
 import CharacterCustomizer from './components/CharacterCustomizer';
 import Store from './components/Store';
+import TouchControls from './components/TouchControls';
 import { useGameStore } from './store/gameStore';
 
 type Controls = {
@@ -58,6 +59,7 @@ export default function App() {
         <HUD />
         <CharacterCustomizer />
         <Store />
+        <TouchControls />
       </KeyboardControls>
     </>
   );

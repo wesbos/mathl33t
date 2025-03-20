@@ -32,6 +32,14 @@ interface CharacterAppearance {
   shirtColor: string;
 }
 
+interface TouchControls {
+  forward?: boolean;
+  backward?: boolean;
+  left?: boolean;
+  right?: boolean;
+  jump?: boolean;
+}
+
 interface GameState {
   isLoggedIn: boolean;
   username: string | null;
@@ -46,6 +54,7 @@ interface GameState {
   players: Map<string, Player>;
   socket: WebSocket | null;
   appearance: CharacterAppearance;
+  touchControls: TouchControls;
   setLoggedIn: (status: boolean) => void;
   setUsername: (username: string) => void;
   setScore: (score: number) => void;
@@ -55,6 +64,7 @@ interface GameState {
   updatePlayerPosition: (position: { x: number; y: number; z: number }, rotation: { x: number; y: number; z: number }) => void;
   connectToServer: () => void;
   updateAppearance: (updates: Partial<CharacterAppearance>) => void;
+  setTouchControls: (controls: Partial<TouchControls>) => void;
 }
 
 // Available customization options
@@ -164,6 +174,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   players: new Map(),
   socket: null,
   appearance: DEFAULT_APPEARANCE,
+  touchControls: {
+    forward: false,
+    backward: false,
+    left: false,
+    right: false,
+    jump: false
+  },
 
   setLoggedIn: (status) => {
     set({ isLoggedIn: status });
@@ -226,6 +243,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       }));
     }
   },
+
+  setTouchControls: (controls) => set((state) => ({
+    touchControls: { ...state.touchControls, ...controls }
+  })),
 
   connectToServer: () => {
     const socket = new WebSocket(`ws://${window.location.host}/ws`);

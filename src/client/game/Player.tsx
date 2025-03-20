@@ -50,7 +50,18 @@ export default function Player() {
   useFrame((state, delta) => {
     if (!playerRef.current) return;
 
-    const { forward, backward, left, right, jump } = getKeys();
+    const keyboardControls = getKeys();
+    const touchControls = useGameStore.getState().touchControls;
+
+    // Combine keyboard and touch controls
+    const controls = {
+      forward: keyboardControls.forward || touchControls.forward || false,
+      backward: keyboardControls.backward || touchControls.backward || false,
+      left: keyboardControls.left || touchControls.left || false,
+      right: keyboardControls.right || touchControls.right || false,
+      jump: keyboardControls.jump || touchControls.jump || false
+    };
+
     const position = playerRef.current.translation();
     const velocity = playerRef.current.linvel();
     const rotation = playerRef.current.rotation();
@@ -65,12 +76,11 @@ export default function Player() {
     if (velocity.y < 0) {
       playerRef.current.applyImpulse({ x: 0, y: -9.81 * GRAVITY_MULTIPLIER * delta, z: 0 });
     } else if (velocity.y > 0) {
-      // Almost no gravity while going up for a quick burst
-      playerRef.current.applyImpulse({ x: 0, y: -9.81 * (GRAVITY_MULTIPLIER * 0.02) * delta, z: 0 }); // Even less upward gravity
+      playerRef.current.applyImpulse({ x: 0, y: -9.81 * (GRAVITY_MULTIPLIER * 0.02) * delta, z: 0 });
     }
 
-    // Check if player is grounded (adjusted threshold for snappier response)
-    const isNowGrounded = Math.abs(velocity.y) < 0.01; // Even lower threshold for more responsive jumping
+    // Check if player is grounded
+    const isNowGrounded = Math.abs(velocity.y) < 0.01;
     if (isNowGrounded && !isGrounded) {
       setIsGrounded(true);
       setCanDoubleJump(true);
@@ -88,10 +98,10 @@ export default function Player() {
 
     // Calculate movement direction
     moveDirection.set(0, 0, 0);
-    if (forward) moveDirection.add(cameraDirection);
-    if (backward) moveDirection.sub(cameraDirection);
-    if (left) moveDirection.sub(sideDirection);
-    if (right) moveDirection.add(sideDirection);
+    if (controls.forward) moveDirection.add(cameraDirection);
+    if (controls.backward) moveDirection.sub(cameraDirection);
+    if (controls.left) moveDirection.sub(sideDirection);
+    if (controls.right) moveDirection.add(sideDirection);
     moveDirection.normalize().multiplyScalar(MOVE_SPEED);
 
     // Apply movement
@@ -105,19 +115,15 @@ export default function Player() {
     playerRef.current.setLinvel(moveVelocity);
 
     // Handle jumping
-    if (jump) {
+    if (controls.jump) {
       if (isGrounded) {
-        // First jump
         playerRef.current.applyImpulse({ x: 0, y: JUMP_FORCE, z: 0 });
         setIsGrounded(false);
-        // Play jump sound
         new Audio('/sounds/jump.mp3').play().catch(() => {});
       } else if (canDoubleJump) {
-        // Double jump
-        playerRef.current.setLinvel({ x: moveVelocity.x, y: 0, z: moveVelocity.z }); // Reset vertical velocity
+        playerRef.current.setLinvel({ x: moveVelocity.x, y: 0, z: moveVelocity.z });
         playerRef.current.applyImpulse({ x: 0, y: DOUBLE_JUMP_FORCE, z: 0 });
         setCanDoubleJump(false);
-        // Play double jump sound
         new Audio('/sounds/doublejump.mp3').play().catch(() => {});
       }
     }
