@@ -4,7 +4,7 @@
 
 A 3D world math game that isn't very good. Obnoxiously vibe coded with AI. You can see the prompts in prompts.html
 
-You can play it at [https://mathl33t.com](mathl33t.com)
+You can play it at [mathl33t.com](https://mathl33t.com)
 
 To dev: `npm install` then `npm run dev`. To build `npm run build`.
 
