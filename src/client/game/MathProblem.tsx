@@ -42,15 +42,47 @@ function generateMathProblem() {
       answer = 0;
   }
 
-  const options = [
-    answer,
-    answer + Math.floor(Math.random() * 5) + 1,
-    answer - Math.floor(Math.random() * 5) + 1,
-    Math.abs(answer * 2 - Math.floor(Math.random() * 5))
-  ].sort(() => Math.random() - 0.5);
+  const generateUniqueWrongAnswer = (correctAnswer: number, existingAnswers: number[]): number => {
+    let wrongAnswer;
+    do {
+      // Generate wrong answers based on the operation type
+      switch (operation) {
+        case '+':
+        case '-':
+          wrongAnswer = answer + (Math.random() < 0.5 ? 1 : -1) * (Math.floor(Math.random() * 5) + 1);
+          break;
+        case '*':
+          wrongAnswer = answer + (Math.random() < 0.5 ? 1 : -1) * (Math.floor(Math.random() * 10) + 1);
+          break;
+        case '/':
+          wrongAnswer = answer + (Math.random() < 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1);
+          break;
+        default:
+          wrongAnswer = answer + 1;
+      }
+    } while (
+      wrongAnswer === correctAnswer || // Don't use the correct answer
+      wrongAnswer <= 0 || // Keep answers positive
+      existingAnswers.includes(wrongAnswer) // Avoid duplicates
+    );
+    return wrongAnswer;
+  };
+
+  // Create array with correct answer and three unique wrong answers
+  const options = [answer];
+  while (options.length < 4) {
+    const wrongAnswer = generateUniqueWrongAnswer(answer, options);
+    options.push(wrongAnswer);
+  }
+
+  // Shuffle the options
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [options[i], options[j]] = [options[j], options[i]];
+  }
 
   return {
-    question: `${num1} ${operation} ${num2} = ?`,
+    question: `${num1} ${operation === '*' ? '×' : operation === '/' ? '÷' : operation} ${num2} = ?`,
     answer,
     options
   };
