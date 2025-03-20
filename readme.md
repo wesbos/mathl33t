@@ -8,6 +8,10 @@ You can play it at [https://mathl33t.com](mathl33t.com)
 
 To dev: `npm install` then `npm run dev`. To build `npm run build`.
 
+## Pull Requests
+
+Please submit your bugs and features via a github issue. As the developer, I will copy and paste them into the AI.
+
 ## Features wanted
 
 I need to find time to type these into the AI
